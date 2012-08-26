@@ -15,9 +15,11 @@ To get started, add the following to your Node file:
 
 Simple usage looks like:
 
-    hipmob.setup('your-username','your-api-key');
-    var apps = hipmob.get_applications();
-    console.log(util.inspect(apps));
+    var util = require("util");
+    var handle = hipmob('your-username','your-api-key');
+    handle.get_applications(function(err, applist){
+        console.log(util.inspect(applist));
+    });
 
 ## Documentation
 

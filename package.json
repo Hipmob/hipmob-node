@@ -1,0 +1,22 @@
+{
+    "name": "hipmob",
+    "version": "0.1.0",
+    "description": "Provides bindings to communicate with the Hipmob Server API from NodeJS code",
+    "homepage": "http://www.hipmob.com",
+    "author": "Femi Omojola <femi@hipmob.com> (http://www.hipmob.com/)",
+    "contributors": [ "Hipmob Contributors (https://github.com/Hipmob/hipmob-php/contributors)" ],
+    "keywords": ["hipmob","messaging"],
+    "main": "./hipmob.js",
+    "engines": { "node": "*" },
+    "repository" : {
+	"type" : "git",
+	"url" : "https://github.com/Hipmob/hipmob-node.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Hipmob/hipmob-node/issues"
+    },
+    "licenses": [{ "type": "Apache-2.0" }],
+    "dependencies": {
+        "request": "latest"
+    }
+}
