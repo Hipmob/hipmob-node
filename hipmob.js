@@ -15,7 +15,8 @@
     var pattern6 = /No friends specified\./;
     var pattern7 = /Unauthorized/;
     var pattern8 = /Authentication required/;
-    
+    var pattern9 = /Invalid message content-type\./;
+
     // response patterns
     var message_sent_pattern = /Message sent\./;
 
@@ -337,7 +338,7 @@
 		}
 	    });
 	};
-
+	
 	// sends a text message
 	helpers['send_text_message'] = function(app, device, text, autocreate, callback){
 	    var body = { text: text };
@@ -351,9 +352,11 @@
 	    }, function(err, response, body){
 		try{
 		    _check_for_errors(response.headers);
-		    var res = false;
-		    if('x-hipmob-reason' in response.headers && message_sent_pattern.test(response.headers['x-hipmob-reason'])) res = true;
-		    callback(res);
+		    if(response.statusCode == 200 && 'x-hipmob-reason' in response.headers && message_sent_pattern.test(response.headers['x-hipmob-reason'])){
+			callback(false);
+		    }else{
+			callback(new Error(response.headers['x-hipmob-reason']));
+		    }
 		}catch(e){
 		    callback(e);
 		}
@@ -374,6 +377,8 @@
 	    throw new Error("Unauthorized");
 	}else if(pattern8.test(reason)){
 	    throw new Error("Authentication required");
+	}else if(pattern9.test(reason)){
+	    throw new Error("Invalid message content type");
 	}else if(pattern1.test(reason)){
 	    throw new Error("No application specified");
 	}else if(pattern2.test(reason)){
