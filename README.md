@@ -11,7 +11,7 @@ Download the latest version of the Hipmob server API Node bindings with:
 
 To get started, add the following to your Node file:
 
-   var hipmob = require("hipmob");
+    var hipmob = require("hipmob");
 
 Simple usage looks like:
 
