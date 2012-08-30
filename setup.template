@@ -1,5 +1,5 @@
 #!/bin/bash
 export hipmob_server=<test server url>
 export hipmob_username=<username>
-export hipmob_password=<apikey>
+export hipmob_apikey=<apikey>
 export hipmob_app=<app mobile key>
