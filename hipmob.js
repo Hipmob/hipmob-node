@@ -24,14 +24,49 @@
 	var name = details['name'];
 	var url = details['url'];
 	var created = details['created'];
-	var modified = details['modified'];
-
+	var modified = 'modified' in details ? details['modified'] : false;
+	
 	this.toString = function(){
 	    return "(HipmobApp) "+name+" ["+id+"]";
 	};
+
+	this.id = function(){ return id; }
+	this.created = function(){ return created; }
+	this.modified = function(){ return modified; }
     }
     
     HipmobApp.prototype = {
+	toString : function () {
+            return this.toString();
+        }
+    };
+
+    // Hipmob device prototype
+    function HipmobDevice(hipmob, app, deviceid, full, source)
+    {
+	var hipmob = hipmob;
+	var app = appid;
+	var id = deviceid;
+	var platform = full ? source['platform'] : false;
+	var version = full ? source['version'] : false;
+	var created = full ? source['created'] : false;
+	var modified = full && 'modified' in source ? source['modified'] : false;
+	var userdata = full && 'userdata' in source ? source['userdata'] : {};
+
+	this.toString = function(){
+	    return "(HipmobDevice) "+name+" ["+id+"]";
+	};
+
+	this.id = function(){ return id; }
+	this.app = function(){ return app; }
+	this.platform = function(){ return platform; }
+	this.version = function(){ return version; }
+	this.created = function(){ return created; }
+	this.modified = function(){ return modified; }
+	this.userdata = function(){ return userdata; }
+    }
+    
+    HipmobDevice.prototype = {
 	toString : function () {
             return this.toString();
         }
