@@ -1,7 +1,7 @@
 {
     "name": "hipmob",
-    "version": "0.3.0",
-    "description": "Provides bindings to communicate with the Hipmob Server API from NodeJS code",
+    "version": "0.4.0",
+    "description": "Provides bindings to communicate with the Hipmob Server API from NodeJS code.",
     "homepage": "http://www.hipmob.com",
     "author": "Femi Omojola <femi@hipmob.com> (http://www.hipmob.com/)",
     "contributors": [ "Hipmob Contributors (https://github.com/Hipmob/hipmob-php/contributors)" ],

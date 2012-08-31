@@ -6,6 +6,7 @@
 
 (function(undefined){
     var qs = require('querystring');
+    var fs = require('fs');
     var serverurl = 'https://api.hipmob.com/';
     var hasModule = (typeof module !== 'undefined' && module.exports);
     var pattern1 = /No application specified\./;
@@ -25,7 +26,16 @@
     var all_friends_removed_pattern = /Friend list cleared \((\d*) friends removed\)\./;
     var friends_set_pattern = /Friend list updated \((\d*) friends added\)\./;
 
-    var helpers = {};
+    //
+    // returns the last function
+    var fetch_callback = function()
+    {
+	var i, l = arguments.length;
+	for(i=l-1;i>=0;i--){
+	    if(typeof arguments[i] == 'function') return arguments[i];
+	}
+	return false;
+    };
     
     // Hipmob app prototype
     function HipmobApp(hipmob, details)
@@ -49,11 +59,7 @@
     HipmobApp.prototype = {
 	toString : function () {
             return this.toString();
-        },
-
-	is_hipmob_app: function() {
-	    return true; 
-	}
+        }
     };
 
     // Hipmob device prototype
@@ -108,7 +114,7 @@
 			    apply_source(source);
 			    callback(false, that);
 			}else{
-			    throw new Error("Invalid source response ["+typeof source+"]");
+			    callback(new Error("Invalid source response ["+typeof source+"]"))
 			}
 		    });
 		}	
@@ -132,13 +138,17 @@
 	    }
 	};
 
-	this.send_text_message = function(text, arg1, arg2){
-	    if(text == undefined) throw new Error("Cannot send a blank text message");
-	    else if(arg1 == undefined){
+	this.send_text_message = function(text, arg1, arg2)
+	{
+	    var cb = fetch_callback(arg1, arg2);
+	    if(text == undefined || typeof text != "string" || text.trim() === ""){
+		if(cb != null) cb(new Error("Cannot send a blank text message"));
+		else throw new Error("Cannot send a blank text message");
+	    }else if(arg1 == undefined){
 		helpers['send_text_message'](i_app, deviceid, text, false, function(err){});
-	    }else if(typeof arg1 == 'function'){
+	    }else if(arg1 == cb){
 		helpers['send_text_message'](i_app, deviceid, text, false, function(err){
-		    arg1(err);
+		    cb(err);
 		});
 	    }else if(!arg1){
 		if(arg2 == undefined){
@@ -196,6 +206,75 @@
 		if(typeof callback == 'function') callback(err, count);
 	    });
 	};
+
+	this.send_file_message = function(formats, image, format, arg1, arg2){
+	    var cb = fetch_callback(arg1, arg2);
+	    var err = false;
+	    if(image == undefined) err = new Error("Please provide an image");
+	    else if(format == undefined) err = new Error("Please specify an image format");
+	    else if(typeof format != "string") err = new Error("Please specify an image format as a string");
+	    else if(formats.indexOf(format) == -1){
+		err = new Error("Invalid image format ["+format+"]: must be one of ("+formats.toString()+")");
+	    }
+	    if(err){
+		if(cb){
+		    cb(err);
+		    return;
+		}else throw err;
+	    }
+	    
+	    // verify that it exists
+	    var proceed = function(data, length){
+		if(arg1 == undefined){
+		    helpers['send_file_message'](i_app, deviceid, data, length, format, false, function(err){});
+		}else if(typeof arg1 == 'function'){
+		    helpers['send_file_message'](i_app, deviceid, data, length, format, false, function(err){
+			arg1(err);
+		    });
+		}else if(!arg1){
+		    if(arg2 == undefined){
+			helpers['send_file_message'](i_app, deviceid, data, length, format, false, function(err){});
+		    }else if(typeof arg2 == 'function'){
+			helpers['send_file_message'](i_app, deviceid, data, length, format, false, function(err){
+			    arg2(err);
+			});
+		    }else{
+			throw new Error("[HipmobDevice.send_file_message] invalid callback provided: not a function");
+		    }
+		}else{
+		    if(arg2 == undefined){
+			helpers['send_picture_message'](i_app, deviceid, data, length, format, true, function(err){});
+		    }else if(typeof arg2 == 'function'){
+			helpers['send_file_message'](i_app, deviceid, data, length, format, true, function(err){
+			    arg2(err);
+			});
+		    }else{
+			throw new Error("[HipmobDevice.send_file_message] invalid callback provided: not a function");
+		    }
+		}
+	    };
+
+	    // do the type verification
+	    if(image instanceof Buffer){
+		proceed(image, image.length);
+	    }else if(typeof image == "string"){
+		// see if it is a file
+		fs.stat(image, function(err3, filestats){
+		    if(err3){
+			if(cb) cb(new Error("Invalid picture file specified ["+image+"/"+err3+"]"));
+			else throw new Error("Invalid picture file specified ["+image+"/"+err3+"]");
+		    }else{
+			if(filestats.size == 0){
+			    if(cb) cb(new Error("Empty picture file specified ["+image+"]"));
+			    else throw new Error("Empty picture file specified ["+image+"]");
+			}else{
+			    proceed(image, filestats.size);
+			}
+		    }
+		});
+	    }else{
+	    }
+	};
     }
     
     HipmobDevice.prototype = {
@@ -203,10 +282,6 @@
             return this.toString();
         },
 
-	is_hipmob_device: function() { 
-	    return true; 
-	},
-	
 	load: function(callback){
 	    this.load(callback);
 	},
@@ -220,11 +295,11 @@
 	},
 
 	send_picture_message: function(image, format, autocreate, arg2){
-	    //this.send_picture_message(image, format, autocreate, arg2);
+	    this.send_file_message(['image/png','image/jpeg','image/gif'], image, format, autocreate, arg2);
 	},
 	
 	send_audio_message: function(audio, format, autocreate, arg2){
-	    //this.send_audio_message(audio, format, autocreate, arg2);
+	    this.send_file_message(['audio/mp3'], audio, format, autocreate, arg2);
 	},
 
 	list_friends: function(callback){
@@ -519,14 +594,14 @@
 		});
 	    };
 
-	    if('is_hipmob_device' in friend && typeof friend.is_hipmob_device == 'function' && friend.is_hipmob_device()){
+	    if(friend instanceof HipmobDevice){
 		flush_friend(friend.id(), maincallback);
 	    }else if('length' in friend && friend.length > 0){
 		// make sure it is all good: no partials
 		var i, len = friend.length, detail;
 		for(i=0;i<len;i++){
 		    detail = friend[i];
-		    if('is_hipmob_device' in detail && typeof detail.is_hipmob_device == 'function' && detail.is_hipmob_device()) continue;
+		    if(detail instanceof HipmobDevice) continue;
 		    if(typeof maincallback == 'function') return maincallback(new Error("Invalid friend(s) passed: ["+detail+"]"));
 		    return;
 		}
@@ -607,7 +682,7 @@
 		});
 	    };
 	    
-	    if('is_hipmob_device' in friends && typeof friends.is_hipmob_device == 'function' && friends.is_hipmob_device()){
+	    if(friends instanceof HipmobDevice){
 		// everyone is a valid friend: build up the request
 		do_set_friends([ friends.id() ]);
 	    }else if('length' in friends && friends.length > 0){
@@ -616,7 +691,7 @@
 		var friendlist = [];
 		for(i=0;i<len;i++){
 		    detail = friends[i];
-		    if('is_hipmob_device' in detail && typeof detail.is_hipmob_device == 'function' && detail.is_hipmob_device()){
+		    if(detail instanceof HipmobDevice){
 			friendlist.push(detail.id());
 			continue;
 		    }
@@ -668,7 +743,7 @@
 		});
 	    };
 	    
-	    if('is_hipmob_device' in friends && typeof friends.is_hipmob_device == 'function' && friends.is_hipmob_device()){
+	    if(friends instanceof HipmobDevice){
 		// everyone is a valid friend: build up the request
 		do_add_friends([ friends.id() ]);
 	    }else if('length' in friends && friends.length > 0){
@@ -677,7 +752,7 @@
 		var friendlist = [];
 		for(i=0;i<len;i++){
 		    detail = friends[i];
-		    if('is_hipmob_device' in detail && typeof detail.is_hipmob_device == 'function' && detail.is_hipmob_device()){
+		    if(detail instanceof HipmobDevice){
 			friendlist.push(detail.id());
 			continue;
 		    }
@@ -689,6 +764,53 @@
 		do_add_friends(friendlist);
 	    }else{
 		if(typeof callback == 'function') callback(new Error("Invalid friend(s) passed: ["+friends+"]"));
+	    }
+	};
+
+	// sends a picture or audio message
+	helpers['send_file_message'] = function(app, device, data, length, format, autocreate, callback){
+	    var headers = {
+		'Authorization': 'Basic '+new Buffer(uname + ":" + pword).toString("base64"),
+		'Content-Type': format,
+		'Content-Length': length
+	    };
+	    if(autocreate) headers['X-Hipmob-Autocreate'] = 'true';
+	    if(typeof data == "string"){
+		fs.createReadStream(data).pipe(request({
+		    url: baseurl + "apps/"+app+"/devices/"+device+"/messages",
+		    headers: headers,
+		    method: "POST"
+		}, function(err, response, body){
+		    try{
+			_check_for_errors(response.headers);
+			if(response.statusCode == 200 && 'x-hipmob-reason' in response.headers && message_sent_pattern.test(response.headers['x-hipmob-reason'])){
+			    callback(false);
+			}else{
+			    callback(new Error(response.headers['x-hipmob-reason']));
+			}
+		    }catch(e){
+			callback(e);
+		    }
+		}));
+	    }else{
+		// send the buffer
+		request({
+		    url: baseurl + "apps/"+app+"/devices/"+device+"/messages",
+		    headers: headers,
+		    method: "POST",
+		    body: data
+		}, function(err, response, body){
+		    try{
+			_check_for_errors(response.headers);
+			if(response.statusCode == 200 && 'x-hipmob-reason' in response.headers && message_sent_pattern.test(response.headers['x-hipmob-reason'])){
+			    callback(false);
+			}else{
+			    callback(new Error(response.headers['x-hipmob-reason']));
+			}
+		    }catch(e){
+			callback(e);
+		    }
+		});
 	    }
 	};
     }
