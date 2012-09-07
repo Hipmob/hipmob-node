@@ -1,5 +1,5 @@
 // hipmob.js
-// version: 0.1.0
+// version: 0.4.1
 // author: Femi Omojola
 // license: Apache 2.0
 // hipmob.js
@@ -466,7 +466,6 @@
 		    'Authorization': 'Basic '+new Buffer(uname + ":" + pword).toString("base64")
 		}, method: "GET"
 	    }, function(err, response, body){
-		console.log(body);
 		try{
 		    _check_for_errors(response.headers);
 		    
