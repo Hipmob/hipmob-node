@@ -1,5 +1,5 @@
 // hipmob.js
-// version: 0.4.1
+// version: 0.5.0
 // author: Femi Omojola
 // license: Apache 2.0
 // hipmob.js
@@ -7,6 +7,7 @@
 (function(undefined){
     var qs = require('querystring');
     var fs = require('fs');
+    var crypto = require('crypto');
     var serverurl = 'https://api.hipmob.com/';
     var hasModule = (typeof module !== 'undefined' && module.exports);
     var pattern1 = /No application specified\./;
@@ -328,6 +329,16 @@
 
 	set_friends: function(friends, callback){
 	    this.set_friends(friends, callback);
+	},
+	
+	generate_peer_token: function(secret, friend)
+	{
+	    return crypto.createHash('sha512').update(this.id() +'|'+friend.id()+'|'+moment().unix()+'|'+secret).digest('hex');
+	},
+
+	generate_auth_token: function(secret)
+	{
+	    return crypto.createHash('sha512').update(this.id() +'|'+moment().unix()+'|'+secret).digest('hex');
 	}
     };
     
@@ -848,10 +859,11 @@
     if(hasModule) {
         module.exports = hipmob;
     }
+    
     /*global ender:false */
     if (typeof ender === 'undefined') {
         // here, `this` means `window` in the browser, or `global` on the server
-        // add `moment` as a global object via a string identifier,
+        // add `hipmob` as a global object via a string identifier,
         // for Closure Compiler "advanced" mode
         this['hipmob'] = hipmob;
     }
