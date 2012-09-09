@@ -333,12 +333,14 @@
 	
 	generate_peer_token: function(secret, friend)
 	{
-	    return crypto.createHash('sha512').update(this.id() +'|'+friend.id()+'|'+moment().unix()+'|'+secret).digest('hex');
+	    var now = moment().unix();
+	    return now + '|' + crypto.createHash('sha512').update(this.id() +'|'+friend.id()+'|'+now+'|'+secret).digest('hex');
 	},
 
 	generate_auth_token: function(secret)
 	{
-	    return crypto.createHash('sha512').update(this.id() +'|'+moment().unix()+'|'+secret).digest('hex');
+	    var now = moment().unix();
+	    return now + '|'+ crypto.createHash('sha512').update(this.id() +'|'+now+'|'+secret).digest('hex');
 	}
     };
     
