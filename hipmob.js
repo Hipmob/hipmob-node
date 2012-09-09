@@ -1,5 +1,5 @@
 // hipmob.js
-// version: 0.5.0
+// version: 0.5.1
 // author: Femi Omojola
 // license: Apache 2.0
 // hipmob.js
