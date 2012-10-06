@@ -126,16 +126,23 @@
 
 	this.available_message_count = function(callback){
 	    if(typeof callback == 'function'){
-		if(full){
-		    callback(false, that);
-		}else{
-		    helpers['available_message_count'](i_app, deviceid, function(err, count){
-			if(err) callback(err);
-			else callback(false, count);
-		    });
-		}	
+		helpers['available_message_count'](i_app, deviceid, function(err, count){
+		    if(err) callback(err);
+		    else callback(false, count);
+		});
 	    }else{
 		throw new Error("[HipmobDevice.available_message_count] must be called with a callback");
+	    }
+	};
+
+	this.check_device_status = function(callback){
+	    if(typeof callback == 'function'){
+		helpers['check_device_status'](i_app, deviceid, function(err, count){
+		    if(err) callback(err);
+		    else callback(false, count);
+		});
+	    }else{
+		throw new Error("[HipmobDevice.check_device_status] must be called with a callback");
 	    }
 	};
 
@@ -289,6 +296,10 @@
 	
 	available_message_count: function(callback){
 	    this.available_message_count(callback);
+	},
+
+	check_device_status: function(callback){
+	    this.check_device_status(callback);
 	},
 
 	send_text_message: function(text, autocreate, arg2){
@@ -487,6 +498,34 @@
 			var bits = JSON.parse(body);
 			if('count' in bits) callback(false, bits.count);
 			else callback(new Error("No message count was returned."));
+		    }else{
+			var err = "Invalid response type";
+			if('headers' in response && 'content-type' in response.headers) err += " ["+response.headers['content-type']+"]";
+			else err += " (No Content-Type header)";
+			callback(new Error(err));
+		    }
+		}catch(e){
+		    callback(e);
+		}
+	    });
+	};
+
+	// check the device status
+	helpers['check_device_status'] = function(app, device, callback){
+	    request({
+		url: baseurl + "apps/"+app+"/devices/"+device+"/status",
+		headers: {
+		    'Authorization': 'Basic '+new Buffer(uname + ":" + pword).toString("base64")
+		}, method: "GET"
+	    }, function(err, response, body){
+		try{
+		    _check_for_errors(response.headers);
+		    
+		    // it works: load it up
+		    if('headers' in response && 'content-type' in response.headers && response.headers['content-type'] == 'application/vnd.com.hipmob.Device.status+json; version=1.0'){
+			var bits = JSON.parse(body);
+			if('online' in bits) callback(false, bits.online);
+			else callback(new Error("No message status was returned."));
 		    }else{
 			var err = "Invalid response type";
 			if('headers' in response && 'content-type' in response.headers) err += " ["+response.headers['content-type']+"]";
