@@ -10,6 +10,7 @@
     var crypto = require('crypto');
     var serverurl = 'https://api.hipmob.com/';
     var hasModule = (typeof module !== 'undefined' && module.exports);
+    var urlparse = require("url");
     var pattern1 = /No application specified\./;
     var pattern2 = /No device specified\./;
     var pattern3 = /API Request Failed\./;
@@ -181,6 +182,76 @@
 	    }
 	};
 
+	this.send_json_message = function(content, arg1, arg2)
+	{
+	    var cb = fetch_callback(arg1, arg2);
+	    if(content == undefined || typeof content != "object"){
+		if(cb != null) cb(new Error("Cannot send a blank JSON message"));
+		else throw new Error("Cannot send a blank JSON message");
+	    }else if(arg1 == undefined){
+		helpers['send_json_message'](i_app, deviceid, content, false, function(err){});
+	    }else if(arg1 == cb){
+		helpers['send_json_message'](i_app, deviceid, content, false, function(err){
+		    cb(err);
+		});
+	    }else if(!arg1){
+		if(arg2 == undefined){
+		    helpers['send_json_message'](i_app, deviceid, content, false, function(err){});
+		}else if(typeof arg2 == 'function'){
+		    helpers['send_json_message'](i_app, deviceid, content, false, function(err){
+			arg2(err);
+		    });
+		}else{
+		    throw new Error("[HipmobDevice.send_json_message] invalid callback provided: not a function");
+		}
+	    }else{
+		if(arg2 == undefined){
+		    helpers['send_json_message'](i_app, deviceid, content, true, function(err){});
+		}else if(typeof arg2 == 'function'){
+		    helpers['send_json_message'](i_app, deviceid, content, true, function(err){
+			arg2(err);
+		    });
+		}else{
+		    throw new Error("[HipmobDevice.send_json_message] invalid callback provided: not a function");
+		}
+	    }
+	};
+
+	this.send_binary_message = function(content, arg1, arg2)
+	{
+	    var cb = fetch_callback(arg1, arg2);
+	    if(content == undefined || !(content instanceof Buffer)){
+		if(cb != null) cb(new Error("Cannot send a blank binary message"));
+		else throw new Error("Cannot send a blank binary message");
+	    }else if(arg1 == undefined){
+		helpers['send_binary_message'](i_app, deviceid, content, false, function(err){});
+	    }else if(arg1 == cb){
+		helpers['send_binary_message'](i_app, deviceid, content, false, function(err){
+		    cb(err);
+		});
+	    }else if(!arg1){
+		if(arg2 == undefined){
+		    helpers['send_binary_message'](i_app, deviceid, content, false, function(err){});
+		}else if(typeof arg2 == 'function'){
+		    helpers['send_binary_message'](i_app, deviceid, content, false, function(err){
+			arg2(err);
+		    });
+		}else{
+		    throw new Error("[HipmobDevice.send_binary_message] invalid callback provided: not a function");
+		}
+	    }else{
+		if(arg2 == undefined){
+		    helpers['send_binary_message'](i_app, deviceid, content, true, function(err){});
+		}else if(typeof arg2 == 'function'){
+		    helpers['send_binary_message'](i_app, deviceid, content, true, function(err){
+			arg2(err);
+		    });
+		}else{
+		    throw new Error("[HipmobDevice.send_binary_message] invalid callback provided: not a function");
+		}
+	    }
+	};
+
 	this.list_friends = function(callback){
 	    if(typeof callback == 'function'){
 		helpers['list_friends'](i_app, deviceid, callback);
@@ -306,6 +377,15 @@
 	    this.send_text_message(text, autocreate, arg2);
 	},
 
+	send_json_message: function(content, autocreate, arg2){
+	    this.send_json_message(content, autocreate, arg2);
+	},
+
+	send_binary_message: function(content, autocreate, arg2)
+	{
+	    this.send_binary_message(content, autocreate, arg2);
+	},
+
 	send_picture_message: function(image, format, autocreate, arg2){
 	    this.send_file_message(['image/png','image/jpeg','image/gif'], image, format, autocreate, arg2);
 	},
@@ -360,8 +440,26 @@
     {
 	var uname = username;
 	var pword = password;
+	var baseurl = serverurl;	
+	
+	// see if we need to reconstruct
+	if(!password){
+	    if(!username) throw new Error("No username/password or configuration URL specified.");
+	    var parsed = urlparse.parse(username);
+	    if(typeof parsed == 'object'){
+		if('auth' in parsed && 'host' in parsed){
+		    var bits = auth.split(":", 2);
+		    if(bits.length == 2){
+			uname = bits[0];
+			password = bits[1];
+		    }
+		    baseurl = ('protocol' in parsed ? parsed.protocol : 'https') + "://" + host+"/";
+		}
+	    }else{
+		throw new Error("No username/password or invalid configuration URL specified.");
+	    }
+	}
 	var request = require('request');
-	var baseurl = serverurl;
 	var util = require('util');
 	if('hipmob_server' in process.env){
 	    baseurl = process.env.hipmob_server;
@@ -550,6 +648,58 @@
 		}, 
 		method: "POST",
 		body: qs.stringify(body).toString('utf8')
+	    }, function(err, response, body){
+		try{
+		    _check_for_errors(response.headers);
+		    if(response.statusCode == 200 && 'x-hipmob-reason' in response.headers && message_sent_pattern.test(response.headers['x-hipmob-reason'])){
+			callback(false);
+		    }else{
+			callback(new Error(response.headers['x-hipmob-reason']));
+		    }
+		}catch(e){
+		    callback(e);
+		}
+	    });
+	};
+
+	// sends a JSON message
+	helpers['send_json_message'] = function(app, device, content, autocreate, callback){
+	    var headers = {
+		'Authorization': 'Basic '+new Buffer(uname + ":" + pword).toString("base64"),
+		'Content-Type': 'application/json'
+	    };
+	    if(autocreate) headers['X-Hipmob-Autocreate'] = 'true';
+	    request({
+		url: baseurl + "apps/"+app+"/devices/"+device+"/messages",
+		headers: headers,
+		method: "POST",
+		json: content,
+	    }, function(err, response, body){
+		try{
+		    _check_for_errors(response.headers);
+		    if(response.statusCode == 200 && 'x-hipmob-reason' in response.headers && message_sent_pattern.test(response.headers['x-hipmob-reason'])){
+			callback(false);
+		    }else{
+			callback(new Error(response.headers['x-hipmob-reason']));
+		    }
+		}catch(e){
+		    callback(e);
+		}
+	    });
+	};
+
+	// sends a binary message
+	helpers['send_binary_message'] = function(app, device, content, autocreate, callback){
+	    var headers = {
+		'Authorization': 'Basic '+new Buffer(uname + ":" + pword).toString("base64"),
+		'Content-Type': 'application/octet-stream'
+	    };
+	    if(autocreate) headers['X-Hipmob-Autocreate'] = 'true';
+	    request({
+		url: baseurl + "apps/"+app+"/devices/"+device+"/messages",
+		headers: headers,
+		method: "POST",
+		body: content,
 	    }, function(err, response, body){
 		try{
 		    _check_for_errors(response.headers);
