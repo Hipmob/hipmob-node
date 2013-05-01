@@ -1,5 +1,5 @@
 // hipmob.js
-// version: 0.5.1
+// version: 0.8.0
 // author: Femi Omojola
 // license: Apache 2.0
 // hipmob.js
@@ -20,6 +20,10 @@
     var pattern7 = /Unauthorized/;
     var pattern8 = /Authentication required/;
     var pattern9 = /Invalid message content-type\./;
+    var pattern10 = /User not found\./;
+    var pattern11 = /No status specified\./;
+    var pattern12 = /Invalid status specified\./;
+    var pattern13 = /You can only change your own status\./;
 
     // response patterns
     var message_sent_pattern = /Message sent\./;
@@ -27,7 +31,8 @@
     var no_changes_made_pattern = /No changes made\./;
     var all_friends_removed_pattern = /Friend list cleared \((\d*) friends removed\)\./;
     var friends_set_pattern = /Friend list updated \((\d*) friends added\)\./;
-
+    var status_updated_pattern = /\[(\s*)] status updated to "(\s)"/;
+    
     //
     // returns the last function
     var fetch_callback = function()
@@ -434,6 +439,50 @@
 	    return now + '|'+ crypto.createHash('sha512').update(this.id() +'|'+now+'|'+secret).digest('hex');
 	}
     };
+
+    // Hipmob user prototype
+    function HipmobUser(helpers, hipmob, details)
+    {
+	var i_helpers = helpers;
+	var hipmob = hipmob;
+	var username = details['username'];
+	var first_name = details['first_name'];
+	var last_name = details['last_name'];
+	var status = details['status'];
+	
+	this.toString = function(){
+	    return "(HipmobUser) "+username+" ("+first_name+" "+last_name+") ["+status+"]";
+	};
+
+	this.username = function(){ return username; }
+	this.status = function(){ return status; }
+	this.first_name = function(){ return first_name; }
+	this.last_name = function(){ return last_name; }
+
+	this.set_status = function(status, callback)
+	{
+	    var cb = fetch_callback(callback);
+	    if(status == undefined || typeof status != "string" || status.trim() === ""){
+		if(cb != null) cb(new Error("Cannot set the status to a blank string"));
+		else throw new Error("Cannot set the status to a blank string");
+	    }else if(!(status == "usestatus" || status == "online" || status == "offline" || status == "hours")){
+		if(cb != null) cb(new Error("Invalid status specified"));
+		else throw new Error("Invalid status specified");
+	    }else{
+		i_helpers['user_set_status'](username, status, cb);
+	    }
+	};
+    }
+    
+    HipmobUser.prototype = {
+	toString : function () {
+            return this.toString();
+        },
+
+	set_status: function(status, callback){
+	    this.set_status(status, callback);
+	}
+    };
     
     // Hipmob prototype
     function Hipmob(username, password)
@@ -507,6 +556,26 @@
 		_check_for_errors(response.headers);
 		if('headers' in response && 'content-type' in response.headers && response.headers['content-type'] == 'application/vnd.com.hipmob.App+json; version=1.0'){
 		    var res = new HipmobApp(this, JSON.parse(body));
+		    if(typeof callback == 'function') callback(false, res);
+		}else{
+		    if(typeof callback == 'function') callback(true);
+		}
+	    });
+	};
+
+	this.get_user = function(username, callback)
+	{
+	    var authheader = 'Basic '+new Buffer(uname + ":" + pword).toString("base64");
+	    var headers = {
+		'Authorization': authheader
+	    };
+	    request.get({
+		url: baseurl + "user/"+username,
+		headers: headers
+	    }, function(err, response, body){
+		_check_for_errors(response.headers);
+		if('headers' in response && 'content-type' in response.headers && response.headers['content-type'] == 'application/vnd.com.hipmob.User+json; version=1.0'){
+		    var res = new HipmobUser(helpers, this, JSON.parse(body));
 		    if(typeof callback == 'function') callback(false, res);
 		}else{
 		    if(typeof callback == 'function') callback(true);
@@ -1014,6 +1083,30 @@
 		});
 	    }
 	};
+
+	helpers['user_set_status'] = function(user, status, callback)
+	{
+	    request({
+		url: baseurl + "user/"+user+"/status",
+		headers: {
+		    'Authorization': 'Basic '+new Buffer(uname + ":" + pword).toString("base64"),
+		    'Content-Type': 'application/x-www-form-urlencoded'
+		}, 
+		method: "POST",
+		body: qs.stringify({ status: status }).toString('utf8')
+	    }, function(err, response, body){
+		try{
+		    _check_for_errors(response.headers);
+		    if(response.statusCode == 200 && 'x-hipmob-reason' in response.headers && status_updated_pattern.test(response.headers['x-hipmob-reason'])){
+			if(callback) callback(false);
+		    }else{
+			if(callback) callback(new Error(response.headers['x-hipmob-reason']));
+		    }
+		}catch(e){
+		    if(callback) callback(e);
+		}
+	    });
+	};
     }
     
     var hipmob = function(username, password){
@@ -1043,6 +1136,14 @@
 	    throw new Error("Application not found");
 	}else if(pattern6.test(reason)){
 	    throw new Error("No friends specified");
+	}else if(pattern10.test(reason)){
+	    throw new Error("User not found");
+	}else if(pattern11.test(reason)){
+	    throw new Error("No status specified");
+	}else if(pattern12.test(reason)){
+	    throw new Error("Invalid status specified");
+	}else if(pattern13.test(reason)){
+	    throw new Error("You can only change your own status");	    
 	}
     }
     
