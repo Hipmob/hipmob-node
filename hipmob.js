@@ -1,5 +1,5 @@
 // hipmob.js
-// version: 0.8.0
+// version: 0.8.1
 // author: Femi Omojola
 // license: Apache 2.0
 // hipmob.js
@@ -31,7 +31,7 @@
     var no_changes_made_pattern = /No changes made\./;
     var all_friends_removed_pattern = /Friend list cleared \((\d*) friends removed\)\./;
     var friends_set_pattern = /Friend list updated \((\d*) friends added\)\./;
-    var status_updated_pattern = /\[(\s*)] status updated to "(\s)"/;
+    var status_updated_pattern = /\[(\w*)\] status updated to "(\w*)"$/;
     
     //
     // returns the last function
