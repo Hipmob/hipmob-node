@@ -619,6 +619,26 @@
 		}
 	    });
 	};
+
+	this.get_user = function(username, callback)
+	{
+	    var authheader = 'Basic '+new Buffer(uname + ":" + pword).toString("base64");
+	    var headers = {
+		'Authorization': authheader
+	    };
+	    request.get({
+		url: baseurl + "user/"+username,
+		headers: headers
+	    }, function(err, response, body){
+		_check_for_errors(response.headers);
+		if('headers' in response && 'content-type' in response.headers && response.headers['content-type'] == 'application/vnd.com.hipmob.User+json; version=1.0'){
+		    var res = new HipmobUser(helpers, this, JSON.parse(body));
+		    if(typeof callback == 'function') callback(false, res);
+		}else{
+		    if(typeof callback == 'function') callback(true);
+		}
+	    });
+	};
 	
 	this.get_device = function(app, deviceid, arg1, arg2)
 	{
