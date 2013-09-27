@@ -1,6 +1,6 @@
 {
     "name": "hipmob",
-    "version": "0.8.1",
+    "version": "0.8.2",
     "description": "Provides bindings to communicate with the Hipmob Server API from NodeJS code.",
     "homepage": "http://www.hipmob.com",
     "author": "Femi Omojola <femi@hipmob.com> (http://www.hipmob.com/)",
@@ -17,6 +17,6 @@
     },
     "licenses": [{ "type": "Apache-2.0" }],
     "dependencies": {
-        "request": "latest"
+        "request": "*"
     }
 }
